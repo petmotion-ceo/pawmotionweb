@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>SVG State Transition</title>
+  <style>
+    /* 기본 스타일: 전체 화면 설정 */
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #FFFFFF;
+      position: relative;
+      overflow: hidden;
+    }
+    /* 초기 상태 (perpet_1 상태) */
+    #initialState {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      position: relative;
+      display: inline-block;
+    }
+    .container img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    /* 오버레이 버튼 위치 */
+    .overlay {
+      position: absolute;
+      top: 79%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+    }
+    /* 두 번째 상태 (perpet_2 상태) - 초기에는 숨김 */
+    #secondState {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    /* 중앙 이미지: 기본 perpet_2.svg, opacity 전환 효과 */
+    #centerImage {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: block;
+      transition: opacity 0.5s ease;
+      opacity: 1;
+    }
+    /* fade-out: 중앙 이미지의 opacity 0 */
+    .fade-out {
+      opacity: 0;
+    }
+    /* petname 이미지: 애니메이션 효과 위해 top 위치 조정 */
+    #petnameImage {
+      position: absolute;
+      top: 18.7%;
+      left: 43.5%;
+      transform: translate(-50%, -50%);
+      display: block;
+      transition: top 0.5s ease;
+    }
+    /* petname 이미지 이동 (stage 2→3) */
+    #petnameImage.moved {
+      top: calc(18.7% + 10%);
+    }
+    /* petgender 이미지: 초기 투명, 애니메이션 효과 적용 */
+    #petgenderImage {
+      position: absolute;
+      top: 18.7%;
+      left: 43.5%;
+      transform: translate(-50%, -50%);
+      display: block;
+      opacity: 0;
+      transition: opacity 0.5s ease, top 0.5s ease;
+    }
+    /* petgender 이미지 보일 때 */
+    #petgenderImage.visible {
+      opacity: 1;
+    }
+    /* petage 이미지: petgender 원래 위치에 추가될 이미지 */
+    #petageImage {
+      position: absolute;
+      top: 18.7%;
+      left: 43.5%;
+      transform: translate(-50%, -50%);
+      display: block;
+      opacity: 0;
+      transition: opacity 0.5s ease, top 0.5s ease;
+    }
+    #petageImage.visible {
+      opacity: 1;
+    }
+    /* 나이 버튼 컨테이너 */
+    #ageButtons {
+      position: absolute;
+      top: calc(20%);
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      gap: 10px;
+    }
+    .age-button {
+      padding: 10px 10px;
+      border: 2px solid #208FFF;
+      border-radius: 10px;
+      background-color: #FFFFFF;
+      color: #000000;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .age-button.active {
+      background-color: #208FFF;
+      color: #FFFFFF;
+    }
+    /* 텍스트 입력 박스 */
+    #nameInput {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #208FFF;
+      border-radius: 8px;
+      box-sizing: border-box;
+      transition: top 0.5s ease;
+      cursor: text;
+      z-index: 10;
+    }
+    /* 입력 박스 이동 (stage 2→3) */
+    #nameInput.moved {
+      top: calc(20% + 10%);
+    }
+    /* 하단 네비게이션 영역 */
+    #bottomNav {
+      position: fixed;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+    }
+    #bottomNav img {
+      cursor: pointer;
+    }
+    /* next 버튼 비활성화 */
+    #nextBtn.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    /* 성별 버튼 컨테이너 */
+    #genderButtons {
+      position: absolute;
+      top: 23%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      gap: 20px;
+      opacity: 0;
+      transition: opacity 0.5s ease, top 0.5s ease;
+    }
+    /* 성별 버튼 컨테이너 보임 */
+    #genderButtons.visible {
+      opacity: 1;
+    }
+    /* 성별 버튼 초기 스타일 */
+    .gender-button {
+      padding: 10px 50px;
+      border: 2px solid #208FFF;
+      border-radius: 10px;
+      background-color: #FFFFFF;
+      color: #000000;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    /* 선택된 성별 버튼 스타일 */
+    .gender-button.active {
+      background-color: #208FFF;
+      color: #FFFFFF;
+      border: 2px solid #208FFF;
+    }
+    /* 법적 동의 섹션: 가로 길이를 대폭 줄임 */
+    #legalConsent {
+      display: none;
+      position: absolute;
+      bottom: 25%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px; /* 가로 길이 크게 축소 */
+      background-color: #f8f8f8;
+      padding: 10px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #legalConsent label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    #legalConsent input[type="checkbox"] {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 초기 상태: perpet_1.svg와 오버레이 버튼 -->
+  <div id="initialState">
+    <div class="container">
+      <img id="baseImage" src="perpet_1.svg" alt="Base SVG" />
+      <img id="overlayBtn" src="perpet_1_btn.svg" alt="Overlay Button" class="overlay" onclick="showSecondState()" />
+    </div>
+  </div>
+
+  <!-- 두 번째 상태: 여러 SVG 이미지, 입력, 네비게이션, 성별 버튼, 법적 동의 -->
+  <div id="secondState">
+    <!-- 중앙 이미지: 초기 perpet_2.svg -->
+    <img id="centerImage" src="perpet_2.svg" alt="Center SVG" />
+    <img id="petnameImage" src="perpet_2_petname.svg" alt="Pet Name SVG" />
+    <!-- petgender 이미지 (stage 2에 보임) -->
+    <img id="petgenderImage" src="perpet_3_petgender.svg" alt="Pet Gender SVG" />
+    <!-- stage 4에서 추가될 petage 이미지 -->
+    <img id="petageImage" src="perpet_4_age.svg" alt="Pet Age SVG" />
+    <!-- 나이 버튼 컨테이너 (petage 이미지 밑에 위치) -->
+    <div id="ageButtons">
+      <button class="age-button" id="age10">10대</button>
+      <button class="age-button" id="age20">20대</button>
+      <button class="age-button" id="age30">30대</button>
+      <button class="age-button" id="age40">40대</button>
+      <button class="age-button" id="age50">50대~</button>
+    </div>
+    <input type="text" id="nameInput" placeholder="살콩이" />
+    <div id="bottomNav">
+      <img id="beforeBtn" src="perpet_2_before.svg" alt="Before" onclick="revertToInitial()" />
+      <img id="nextBtn" src="perpet_2_next.svg" alt="Next" onclick="nextAction()" />
+    </div>
+    <div id="genderButtons">
+      <button id="maleBtn" class="gender-button">남아</button>
+      <button id="femaleBtn" class="gender-button">여아</button>
+    </div>
+    <!-- 법적 동의 섹션 -->
+    <div id="legalConsent">
+      <form id="consentForm">
+        <label>
+          <input type="checkbox" name="agreePersonal" id="agreePersonal" required>
+          개인정보 수집 및 이용 동의 (필수): 이메일, 성별, 연령대 정보를 얼리버드 신청 및 서비스 개선 목적으로 수집·이용합니다. (보유 기간: 이벤트 종료 후 1년)
+        </label>
+        <label>
+          <input type="checkbox" name="agreeMarketing" id="agreeMarketing">
+          마케팅 정보 수신 동의 (선택): 이메일로 이벤트 및 혜택 안내 정보를 받는 데 동의합니다.
+        </label>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentStage = 2;
+    let isGenderStage = false;
+    
+    function showSecondState() {
+      document.getElementById('initialState').style.display = 'none';
+      document.getElementById('secondState').style.display = 'block';
+    }
+    function revertToInitial() {
+      document.getElementById('secondState').style.display = 'none';
+      document.getElementById('initialState').style.display = 'flex';
+      currentStage = 2;
+      isGenderStage = false;
+      nameInput.style.top = "";
+      document.getElementById('genderButtons').style.top = "";
+      document.getElementById('bottomNav').style.bottom = "";
+      document.getElementById('petnameImage').style.top = "";
+      document.getElementById('petgenderImage').style.top = "";
+      // 원래 petgender 이미지 복원
+      document.getElementById('petgenderImage').src = 'perpet_3_petgender.svg';
+      document.getElementById('petgenderImage').classList.remove('visible');
+      document.getElementById('genderButtons').classList.remove('visible');
+      // petage와 나이 버튼 숨김 및 나이 버튼 active 초기화
+      document.getElementById('petageImage').classList.remove('visible');
+      document.getElementById('ageButtons').style.display = 'none';
+      document.querySelectorAll('.age-button').forEach(btn => btn.classList.remove('active'));
+      // 법적 동의 초기화
+      document.getElementById('legalConsent').style.display = 'none';
+      document.getElementById('agreePersonal').checked = false;
+      document.getElementById('agreeMarketing').checked = false;
+    }
+    const nameInput = document.getElementById('nameInput');
+    const nextBtn = document.getElementById('nextBtn');
+    nameInput.addEventListener('input', function() {
+      if (!isGenderStage) {
+        if (this.value.trim() === "") {
+          nextBtn.classList.add('disabled');
+        } else {
+          nextBtn.classList.remove('disabled');
+        }
+      }
+    });
+    document.addEventListener('DOMContentLoaded', function(){
+      nextBtn.classList.add('disabled');
+    });
+    function nextAction() {
+      if (nextBtn.classList.contains('disabled')) return;
+      const centerImage = document.getElementById('centerImage');
+      
+      if (currentStage === 2) {
+        centerImage.classList.add('fade-out');
+        setTimeout(function() {
+          centerImage.src = 'perpet_3.svg';
+          centerImage.classList.remove('fade-out');
+        }, 500);
+        document.getElementById('petnameImage').classList.add('moved');
+        nameInput.classList.add('moved');
+        document.getElementById('petgenderImage').classList.add('visible');
+        document.getElementById('genderButtons').classList.add('visible');
+        document.getElementById('nextBtn').src = 'perpet_3_next.svg';
+        document.getElementById('beforeBtn').src = 'perpet_3_before.svg';
+        currentStage = 3;
+        isGenderStage = true;
+        nextBtn.classList.add('disabled');
+        document.getElementById('beforeBtn').onclick = revertNextAction;
+      } else if (currentStage === 3) {
+        centerImage.classList.add('fade-out');
+        setTimeout(function() {
+          centerImage.src = 'perpet_4.svg';
+          centerImage.classList.remove('fade-out');
+        }, 500);
+        // petgender 이미지는 10% 아래로 이동
+        document.getElementById('petgenderImage').style.top = "calc(18.7% + 10%)";
+        // petage 이미지를 원래 petgender 위치에 표시 (fade-in 효과)
+        var petage = document.getElementById('petageImage');
+        petage.style.top = "18.7%";
+        petage.classList.add('visible');
+        // 나이 버튼 표시 (petage 이미지 밑에)
+        document.getElementById('ageButtons').style.display = 'flex';
+        // 법적 동의 섹션 표시
+        document.getElementById('legalConsent').style.display = 'block';
+        // petname 이미지와 입력창, 성별 버튼 위치 조정
+        nameInput.style.top = "calc(20% + 20%)";
+        document.getElementById('genderButtons').style.top = "calc(23% + 10%)";
+        document.getElementById('petnameImage').style.top = "calc(18.7% + 20%)";
+        document.getElementById('nextBtn').src = 'perpet_4_next.svg';
+        document.getElementById('beforeBtn').src = 'perpet_4_before.svg';
+        // stage 4로 전환 시 next 버튼 비활성화 (법적 동의 포함)
+        nextBtn.classList.add('disabled');
+        currentStage = 4;
+        document.getElementById('beforeBtn').onclick = revertNextActionStage2;
+      } else if (currentStage === 4) {
+        // 최종 제출 동작 처리: 필수 법적 동의 여부 확인
+        if (!document.getElementById('agreePersonal').checked) {
+          alert("개인정보 수집 및 이용에 대한 동의가 필요합니다.");
+          return;
+        }
+        alert("신청이 완료되었습니다.");
+      }
+    }
+    function revertNextAction() {
+      document.getElementById('petnameImage').classList.remove('moved');
+      document.getElementById('nameInput').classList.remove('moved');
+      document.getElementById('petgenderImage').classList.remove('visible');
+      document.getElementById('genderButtons').classList.remove('visible');
+      document.getElementById('nextBtn').src = 'perpet_2_next.svg';
+      document.getElementById('beforeBtn').src = 'perpet_2_before.svg';
+      document.getElementById('beforeBtn').onclick = revertToInitial;
+      isGenderStage = false;
+      currentStage = 2;
+      // 나이 버튼 숨김 및 초기화
+      document.getElementById('ageButtons').style.display = 'none';
+      document.querySelectorAll('.age-button').forEach(btn => btn.classList.remove('active'));
+      // petgender 이미지 원래 상태 복원
+      document.getElementById('petgenderImage').src = 'perpet_3_petgender.svg';
+      // 법적 동의 초기화
+      document.getElementById('legalConsent').style.display = 'none';
+      document.getElementById('agreePersonal').checked = false;
+      document.getElementById('agreeMarketing').checked = false;
+    }
+    function revertNextActionStage2() {
+      const centerImage = document.getElementById('centerImage');
+      centerImage.classList.add('fade-out');
+      setTimeout(function() {
+        centerImage.src = 'perpet_3.svg';
+        centerImage.classList.remove('fade-out');
+      }, 500);
+      document.getElementById('nextBtn').src = 'perpet_3_next.svg';
+      document.getElementById('beforeBtn').src = 'perpet_3_before.svg';
+      currentStage = 3;
+      nameInput.style.top = "calc(20% + 10%)";
+      document.getElementById('genderButtons').style.top = "23%";
+      document.getElementById('bottomNav').style.bottom = "10%";
+      document.getElementById('petnameImage').style.top = "calc(18.7% + 10%)";
+      document.getElementById('petgenderImage').style.top = "18.7%";
+      document.getElementById('beforeBtn').onclick = revertNextAction;
+      // 나이 버튼 숨김 및 active 초기화
+      document.getElementById('ageButtons').style.display = 'none';
+      document.querySelectorAll('.age-button').forEach(btn => btn.classList.remove('active'));
+      // 법적 동의 초기화
+      document.getElementById('legalConsent').style.display = 'none';
+      document.getElementById('agreePersonal').checked = false;
+      document.getElementById('agreeMarketing').checked = false;
+      nextBtn.classList.add('disabled');
+    }
+    const maleBtn = document.getElementById('maleBtn');
+    const femaleBtn = document.getElementById('femaleBtn');
+    
+    maleBtn.addEventListener('click', function() {
+      maleBtn.classList.add('active');
+      femaleBtn.classList.remove('active');
+      if (isGenderStage) nextBtn.classList.remove('disabled');
+    });
+    
+    femaleBtn.addEventListener('click', function() {
+      femaleBtn.classList.add('active');
+      maleBtn.classList.remove('active');
+      if (isGenderStage) nextBtn.classList.remove('disabled');
+    });
+    
+    // 연령 버튼(10대,20대 등) 클릭 시 active 클래스 토글 및 최종 조건 확인
+    const ageButtons = document.querySelectorAll('.age-button');
+    ageButtons.forEach(button => {
+      button.addEventListener('click', function() {
+         ageButtons.forEach(btn => btn.classList.remove('active'));
+         this.classList.add('active');
+         checkFinalConsent();
+      });
+    });
+    
+    // 법적 동의(개인정보 수집 및 이용 동의) 체크박스 변경 시 최종 조건 확인
+    document.getElementById('agreePersonal').addEventListener('change', checkFinalConsent);
+    
+    function checkFinalConsent() {
+      const selectedAge = document.querySelector('.age-button.active');
+      const agreePersonal = document.getElementById('agreePersonal').checked;
+      if (currentStage === 4 && selectedAge && agreePersonal) {
+           nextBtn.classList.remove('disabled');
+      } else {
+           nextBtn.classList.add('disabled');
+      }
+    }
+  </script>
+</body>
+</html>
